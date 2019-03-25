@@ -144,11 +144,20 @@ def all_operations(vec, all_possibilites, L, K):
     print()
 
 if __name__ == '__main__':
-    L, K = 2, 2
+    L, K = 3, 3
     vectors_in_S2 = [[-1, 0], [-1/2, sqrt(3)/2]]
     all_possibilites = N(L, K)
     find_all_vectors(L, K)
     print("Lenghts equal ", len(all_vectors) == all_possibilites)
     
-    all_operations(vectors_in_S2[0], all_possibilites, L, K)
-    all_operations(vectors_in_S2[1], all_possibilites, L, K)
+    results = []
+    for v in all_vectors:
+        results.append((code_to_number(L, K, 0, v, 0), v))
+    res = sorted(results, key=lambda x:x[0])
+    print(res)
+    for v in res:
+        print(v[0], '->', v[1])
+    for v in res:
+        print(v[1], '->', v[0], '->', decode_to_vector(0, L, K, v[0]))
+    #all_operations(vectors_in_S2[0], all_possibilites, L, K)
+    #all_operations(vectors_in_S2[1], all_possibilites, L, K)
