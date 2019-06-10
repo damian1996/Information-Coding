@@ -2,6 +2,7 @@ import numpy as np
 from math import sqrt
 import itertools as it
 from copy import deepcopy
+import os
 
 # Zmemoryzowac funkcje N
 # Jak dokladnie enkodowac kule (y_i / K)
@@ -48,6 +49,21 @@ def smallest_distance_in_unit_sphere(projected_vec):
     for i, vec in enumerate(all_vectors):
         min_dists.append(np.linalg.norm(projected_vec - vec))
     return np.argmin(np.array(min_dists))
+
+def multivariate_proj_into_S1(vec_in_S2, p=1.0): # shape -> batch_size x L
+    #norm = np.zeros(vec_in_S2.shape[1])
+    norm = np.sum(np.abs(vec_in_S2), axis=0) # po kolumnach, shape -> L
+    assert(norm.shape[0] == vec_in_S2.shape[1])
+    projected = vec_in_S2 / norm
+    # projectd = projected ** (1/p)
+    return projected
+  
+def multivariate_proj_into_S2(vec_in_S1, p=1.0):
+    powered = np.sqrt(np.sum(vec_in_S1 ** 2, axis=0)) # znow po kolumnach
+    assert(powered.shape[0] == vec_in_S1.shape[1])
+    projected = vec_in_S1 / powered
+    # projected = projected ** p
+    return projected
 
 def projection_into_S1(vec_in_S2): # P_1(x) = x / ||x||_1
     x, y = vec_in_S2[0], vec_in_S2[1]
@@ -144,20 +160,38 @@ def all_operations(vec, all_possibilites, L, K):
     print()
 
 if __name__ == '__main__':
-    L, K = 3, 3
+    L, K = 4, 4
     vectors_in_S2 = [[-1, 0], [-1/2, sqrt(3)/2]]
     all_possibilites = N(L, K)
+    print(all_possibilites)
     find_all_vectors(L, K)
-    print("Lenghts equal ", len(all_vectors) == all_possibilites)
+    assert(len(all_vectors) == all_possibilites)
+
+    results, uniques = [], []
+    for ii, v in enumerate(all_vectors):
+        id_for_vector = code_to_number(L, K, 0, v, 0)
+        uniques.append(id_for_vector)
+        results.append((id_for_vector, v))
+    assert(all_possibilites == np.unique(np.array(uniques)).size)
+
+    os.chdir('.')
+    outfile = 'vectors.npy'
+    np.save(outfile, np.array(uniques))
     
-    results = []
-    for v in all_vectors:
-        results.append((code_to_number(L, K, 0, v, 0), v))
+    loaded_uniques = np.load(outfile)
+    assert(np.array_equal(np.array(loaded_uniques), np.array(uniques)))
+
     res = sorted(results, key=lambda x:x[0])
-    print(res)
-    for v in res:
-        print(v[0], '->', v[1])
-    for v in res:
-        print(v[1], '->', v[0], '->', decode_to_vector(0, L, K, v[0]))
+    # for v in res: print(f'{v[0]} -> {v[1]}')
+
+    for v in res: 
+        decoded_vector = decode_to_vector(0, L, K, v[0])
+        assert(np.array_equal(np.array(v[1]), np.array(decoded_vector)))
+        #print(f'{v[1]} -> {v[0]} -> {decoded_vector}')
+
+    mu, sigma = 0, 0.5
+    s1, s2 = np.random.normal(mu, sigma, L), np.random.normal(mu, sigma, L)
+    
+    print(s1, s2)
     #all_operations(vectors_in_S2[0], all_possibilites, L, K)
     #all_operations(vectors_in_S2[1], all_possibilites, L, K)
