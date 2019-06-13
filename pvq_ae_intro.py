@@ -4,9 +4,6 @@ import itertools as it
 from copy import deepcopy
 import os
 
-# Zmemoryzowac funkcje N
-# Jak dokladnie enkodowac kule (y_i / K)
-
 all_vectors = []
 
 def get_next_vector(combi, vec, missing_value):
@@ -51,33 +48,22 @@ def smallest_distance_in_unit_sphere(projected_vec):
     return np.argmin(np.array(min_dists))
 
 def multivariate_proj_into_S1(vec_in_S2, p=1.0): # shape -> batch_size x L
-    #norm = np.zeros(vec_in_S2.shape[1])
-    norm = np.sum(np.abs(vec_in_S2)) # po kolumnach, shape -> L
+    norm = np.sum(np.abs(vec_in_S2))
     projected = vec_in_S2 / norm
     # projectd = projected ** (1/p)
     return projected, norm
   
 def multivariate_proj_into_S2(vec_in_S1, p=1.0):
-    norm = np.sqrt(np.sum(vec_in_S1 ** 2)) # znow po kolumnach
+    norm = np.sqrt(np.sum(vec_in_S1 ** 2))
     projected = vec_in_S1 / norm
     # projected = projected ** p
     return projected, norm
 
 def multivariate_gauss_proj_into_S2(gauss_vec, p=1.0):
-    norm = np.sqrt(np.sum(gauss_vec ** 2)) # znow po kolumnach
+    norm = np.sqrt(np.sum(gauss_vec ** 2))
     projected = gauss_vec / norm
     # projected = projected ** p
     return projected, norm
-
-def projection_into_S1(vec_in_S2): # P_1(x) = x / ||x||_1
-    x, y = vec_in_S2[0], vec_in_S2[1]
-    norm_1 = abs(x) + abs(y)
-    return [x/norm_1, y/norm_1]
-
-def projection_into_S2(vec_in_S1):
-    x, y = vec_in_S1[0], vec_in_S1[1]
-    norm_1 = sqrt(x*x + y*y)
-    return [x/norm_1, y/norm_1]
 
 def N(L, K):
     if K == 0: return 1
@@ -152,59 +138,40 @@ def decode_to_vector(i, l, k, code):
     return vec
 
 def all_operations(vec, all_possibilites, L, K):
-    print(vec)
     vec_in_S2, norm_L2 = multivariate_gauss_proj_into_S2(vec)
     vec_in_S1, norm_L1 = multivariate_proj_into_S1(vec_in_S2)
-    
     closest_vec = smallest_distance_in_unit_sphere(vec_in_S1)
-    #print("Closest = ", all_vectors[closest_vec])
     code = code_to_number(L, K, 0, all_vectors[closest_vec], 0)
-    #print("Code = ", code)
     dec = decode_to_vector(0, L, K, code)
-    #print("Decoded = ", dec)
     vec_back_in_S2, _ = multivariate_gauss_proj_into_S2(dec)
     normal_points = vec_back_in_S2 * norm_L2
-    print(normal_points)
 
 if __name__ == '__main__':
-    L, K = 6, 6
-    vectors_in_S2 = [[-1, 0], [-1/2, sqrt(3)/2]]
+    L, K = 8, 10
     all_possibilites = N(L, K)
     print(all_possibilites)
     find_all_vectors(L, K)
     assert(len(all_vectors) == all_possibilites)
+    # results, uniques = [], []
+    # for ii, v in enumerate(all_vectors):
+    #     id_for_vector = code_to_number(L, K, 0, v, 0)
+    #     uniques.append(id_for_vector)
+    #     results.append((id_for_vector, v))
+    #     if ii%1000==0: print(ii)
 
-    results, uniques = [], []
-    for ii, v in enumerate(all_vectors):
-        id_for_vector = code_to_number(L, K, 0, v, 0)
-        uniques.append(id_for_vector)
-        results.append((id_for_vector, v))
-    assert(all_possibilites == np.unique(np.array(uniques)).size)
+    # assert(all_possibilites == np.unique(np.array(uniques)).size)
 
     os.chdir('.')
+    # serialize_indices = 'indices.npy'
     outfile = 'vectors.npy'
-    np.save(outfile, np.array(uniques))
+
+    stacked_vectors = np.stack(all_vectors)
+    # np.save(serialize_indices, np.array(uniques))
+    np.save(outfile, stacked_vectors)
+
+    # loaded_uniques = np.load(serialize_indices)
+    loaded_stacked = np.load(outfile)
     
-    loaded_uniques = np.load(outfile)
-    assert(np.array_equal(np.array(loaded_uniques), np.array(uniques)))
-
-    res = sorted(results, key=lambda x:x[0])
-    # for v in res: print(f'{v[0]} -> {v[1]}')
-
-    for v in res: 
-        decoded_vector = decode_to_vector(0, L, K, v[0])
-        assert(np.array_equal(np.array(v[1]), np.array(decoded_vector)))
-        #print(f'{v[1]} -> {v[0]} -> {decoded_vector}')
-
-    mu, sigma = 0, 0.5
-    s1, s2 = np.random.normal(mu, sigma, L), np.random.normal(mu, sigma, L)
-    all_operations(s1, all_possibilites, L, K)
-    print()
-    all_operations(s2, all_possibilites, L, K)
-
-# - osobno kodujemy |z|, można bezpośrednio zapisać, lepiej użyć że |z|^2 
-# jest z rozkładu chi-squared,
-
-# - osobno z/|z| ze sfery używając PVQ: rzutujemy na S1, kwantyzacja, 
-# enumarative coding. Decoder rzutuje na S2.
-# D(Q(E(x)))
+    # assert(np.array_equal(np.array(loaded_uniques), np.array(uniques)))
+    assert(np.array_equal(stacked_vectors, loaded_stacked))
+    assert(loaded_stacked.shape == stacked_vectors.shape)
